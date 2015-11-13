@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+  <data>
+
+    <record id="view_split_in_lots" model="ir.ui.view">
+      <field name="name">Split in Serial Numbers</field>
+      <field name="model">stock.move.split</field>
+      <field name="arch" type="xml">
+        <form string="Split in Serial Numbers">
+        <group colspan="4" col="2">
+          <group>
+            <field name="product_id" readonly="1" />
+            <label for="qty" />
+            <div>
+              <field name="qty" readonly="1" class="oe_inline" />
+              <field name="product_uom" readonly="1" class="oe_inline" />
+            </div>
+            <field name="force" />
+          </group>
+          <group>
+            <field string="Location" name="location_id" invisible="0" />
+          </group>          
+         </group>
+         <group>
+         
+         
+         <notebook> 
+         <page string="This Location"> 
+         <field name="line_ids" context="{'loc_orig_id': location_id}"> 
+         <tree string="Serial Numbers" editable="bottom" create="true"> 
+         <field name="can_create" invisible="1"/> 
+         <field name="lot_id" attrs="{'readonly': [('can_create', '=', False)]}" domain="[('product_id','=',parent.product_id)]" context="{'product_id': parent.product_id}"/> 
+         <field name="stock_available" context="{'location_id': parent.location_id}"/> 
+         <field name="stock_reserved" context="{'location_id': parent.location_id}"/> 
+         <field name="stock_reservation_detail" context="{'location_id': parent.location_id}"/> 
+         <field name="stock_reservable" invisible="1"/> 
+         <field name="quantity" attrs="{'readonly': [('stock_reservable', '&lt;', 0.0001),('can_create', '=', False)]}"/> 
+         </tree> 
+         </field> 
+         </page> 
+         <page string="All Locations"> 
+         <field name="line2_ids" readonly="1"> 
+         <tree string="Serial Numbers"> 
+         <field name="lot_id" /> 
+         <field name="stock_available"/> 
+         <field name="stock_reserved" /> 
+         <field name="stock_reservation_detail"/> 
+         </tree> 
+         </field> 
+         </page>
+         </notebook>
+                  
+          </group>
+          <footer>
+            <button name="assign" string="Assign" type="object" class="oe_highlight" icon="gtk-ok" />
+            or
+            <button string="Cancel" class="oe_link" special="cancel" />
+          </footer>
+
+        </form>
+      </field>
+    </record>
+
+    <record id="track_line" model="ir.actions.act_window">
+      <field name="name">Split in Serial Numbers</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">stock.move.split</field>
+      <field name="view_type">form</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+      <field name="context">{'form_view_ref': False}</field>
+    </record>
+
+    <record id="view_picking_form" model="ir.ui.view">
+      <field name="model">stock.picking</field>
+      <field name="inherit_id" ref="stock.view_picking_form" />
+      <field name="arch" type="xml">
+        <!--xpath expr="//page[@string='Operations']" position="attributes">
+          <attribute name="attrs">{'invisible': [('picking_type_code', '=', 'incoming')]}</attribute>
+        </xpath-->
+        <xpath expr="//button[@name='do_unreserve']" position="after">
+          <button name="rereserve_pick" type="object" string="Re-reserve Lots"
+            attrs="{'invisible': [('state', 'in', ['cancel', 'done'])]}" />
+        </xpath>
+
+        <xpath expr="//page[@string='Operations']/field[@name='pack_operation_ids']" position="replace">
+          <field name="pack_operation_ids"
+            context="{'default_picking_id': active_id, 'default_location_id': location_id, 'default_location_dest_id': location_dest_id}">
+            <tree editable="top">
+              <field name="product_id" on_change="product_id_change(product_id, product_uom_id, product_qty)" />
+              <field name="product_uom_id" groups="product.group_uom" />
+              <field name="lot_id" domain="[('product_id','=?', product_id)]" context="{'product_id': product_id}"
+                groups="stock.group_production_lot" />
+              <field name="stock_available" />
+              <field name="stock_reserved" />
+              <field name="picking_id" invisible="1" />
+              <field name="owner_id" groups="stock.group_tracking_owner" />
+              <field name="product_qty" attrs="{'required': [('product_id', '!=', False)]}" />
+              <field name="location_id" domain="[('id', 'child_of', parent.location_id)]" invisible="1" />
+              <field name="location_dest_id" domain="[('id', 'child_of', parent.location_dest_id)]" invisible="1" />
+            </tree>
+          </field>
+        </xpath>
+      </field>
+    </record>
+
+    <record id="view_move_picking_tree" model="ir.ui.view">
+      <field name="model">stock.move</field>
+      <field name="inherit_id" ref="stock.view_move_picking_tree" />
+      <field name="arch" type="xml">
+        <xpath expr="//tree/field[@name='product_uom_qty']" position="after">
+          <field name="has_ancestor" invisible="1" />
+          <field name="stock_missing" attrs="{'invisible': ['|', ('state', 'in', ['cancel', 'done']), ('has_ancestor', '=', True)]}" />
+          <button name="%(track_line)d" string="Assign Lots" type="action"
+            attrs="{'invisible': ['|', ('state', 'in', ['cancel', 'done']), ('has_ancestor', '=', True)]}" />
+          <field name="lots_info" attrs="{'invisible': [('state', 'in', ['cancel'])]}" />
+        </xpath>
+      </field>
+    </record>
+
+
+  </data>
+</openerp>
